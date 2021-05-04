@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -21,16 +21,16 @@ package com.esotericsoftware.kryo.serializers;
 
 import com.esotericsoftware.kryo.KryoTestCase;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /** @author Nathan Sweet */
-public class BeanSerializerTest extends KryoTestCase {
+class BeanSerializerTest extends KryoTestCase {
 	{
 		supportsCopy = true;
 	}
 
 	@Test
-	public void testBeanSerializer () {
+	void testBeanSerializer () {
 		kryo.register(TestClass.class, new BeanSerializer(kryo, TestClass.class));
 
 		TestClass test = new TestClass();
@@ -43,7 +43,7 @@ public class BeanSerializerTest extends KryoTestCase {
 		roundTrip(33, test);
 	}
 
-	static public class TestClass {
+	public static class TestClass {
 		private String text = "something";
 		private String nullField;
 		private TestClass child;

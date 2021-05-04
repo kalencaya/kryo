@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -69,8 +69,11 @@ class ReflectField extends CachedField {
 				kryo.getGenerics().pushGenericType(genericType);
 				kryo.writeObject(output, value, serializer);
 			} else {
-				// The concrete type of the field is known, always use the same serializer.
-				if (serializer == null) serializer = kryo.getSerializer(concreteType);
+				if (serializer == null) {
+					serializer = kryo.getSerializer(concreteType);
+					// The concrete type of the field is known, always use the same serializer.
+					if (valueClass != null && reuseSerializer) this.serializer = serializer;
+				}
 				kryo.getGenerics().pushGenericType(genericType);
 				if (canBeNull) {
 					kryo.writeObjectOrNull(output, value, serializer);
@@ -88,6 +91,12 @@ class ReflectField extends CachedField {
 		} catch (KryoException ex) {
 			ex.addTrace(name + " (" + object.getClass().getName() + ")");
 			throw ex;
+		} catch (StackOverflowError ex) {
+			throw new KryoException(
+				"A StackOverflow occurred. The most likely cause is that your data has a circular reference resulting in " +
+					"infinite recursion. Try enabling references with Kryo.setReferences(true). If your data structure " +
+					"is really more than " + kryo.getDepth() + " levels deep then try increasing your Java stack size.",
+				ex);
 		} catch (Throwable t) {
 			KryoException ex = new KryoException(t);
 			ex.addTrace(name + " (" + object.getClass().getName() + ")");
@@ -113,8 +122,11 @@ class ReflectField extends CachedField {
 				kryo.getGenerics().pushGenericType(genericType);
 				value = kryo.readObject(input, registration.getType(), serializer);
 			} else {
-				// The concrete type of the field is known, always use the same serializer.
-				if (serializer == null) serializer = kryo.getSerializer(concreteType);
+				if (serializer == null) {
+					serializer = kryo.getSerializer(concreteType);
+					// The concrete type of the field is known, always use the same serializer.
+					if (valueClass != null && reuseSerializer) this.serializer = serializer;
+				}
 				kryo.getGenerics().pushGenericType(genericType);
 				if (canBeNull)
 					value = kryo.readObjectOrNull(input, concreteType, serializer);
@@ -159,7 +171,7 @@ class ReflectField extends CachedField {
 		}
 	}
 
-	final static class IntReflectField extends CachedField {
+	static final class IntReflectField extends CachedField {
 		public IntReflectField (Field field) {
 			super(field);
 		}
@@ -201,7 +213,7 @@ class ReflectField extends CachedField {
 		}
 	}
 
-	final static class FloatReflectField extends CachedField {
+	static final class FloatReflectField extends CachedField {
 		public FloatReflectField (Field field) {
 			super(field);
 		}
@@ -237,7 +249,7 @@ class ReflectField extends CachedField {
 		}
 	}
 
-	final static class ShortReflectField extends CachedField {
+	static final class ShortReflectField extends CachedField {
 		public ShortReflectField (Field field) {
 			super(field);
 		}
@@ -273,7 +285,7 @@ class ReflectField extends CachedField {
 		}
 	}
 
-	final static class ByteReflectField extends CachedField {
+	static final class ByteReflectField extends CachedField {
 		public ByteReflectField (Field field) {
 			super(field);
 		}
@@ -309,7 +321,7 @@ class ReflectField extends CachedField {
 		}
 	}
 
-	final static class BooleanReflectField extends CachedField {
+	static final class BooleanReflectField extends CachedField {
 		public BooleanReflectField (Field field) {
 			super(field);
 		}
@@ -345,7 +357,7 @@ class ReflectField extends CachedField {
 		}
 	}
 
-	final static class CharReflectField extends CachedField {
+	static final class CharReflectField extends CachedField {
 		public CharReflectField (Field field) {
 			super(field);
 		}
@@ -381,7 +393,7 @@ class ReflectField extends CachedField {
 		}
 	}
 
-	final static class LongReflectField extends CachedField {
+	static final class LongReflectField extends CachedField {
 		public LongReflectField (Field field) {
 			super(field);
 		}
@@ -423,7 +435,7 @@ class ReflectField extends CachedField {
 		}
 	}
 
-	final static class DoubleReflectField extends CachedField {
+	static final class DoubleReflectField extends CachedField {
 		public DoubleReflectField (Field field) {
 			super(field);
 		}

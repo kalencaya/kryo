@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -107,7 +107,7 @@ public class FieldSerializer<T> extends Serializer<T> {
 			fields[i].write(output, object);
 		}
 
-		if (pop > 0) popTypeVariables(pop);
+		popTypeVariables(pop);
 	}
 
 	public T read (Kryo kryo, Input input, Class<? extends T> type) {
@@ -122,7 +122,7 @@ public class FieldSerializer<T> extends Serializer<T> {
 			fields[i].read(input, object);
 		}
 
-		if (pop > 0) popTypeVariables(pop);
+		popTypeVariables(pop);
 		return object;
 	}
 
@@ -139,7 +139,9 @@ public class FieldSerializer<T> extends Serializer<T> {
 
 	protected void popTypeVariables (int pop) {
 		Generics generics = kryo.getGenerics();
-		generics.popTypeVariables(pop);
+		if (pop > 0) {
+			generics.popTypeVariables(pop);
+		}
 		generics.popGenericType();
 	}
 
@@ -218,12 +220,12 @@ public class FieldSerializer<T> extends Serializer<T> {
 	}
 
 	/** Settings for serializing a field. */
-	static public abstract class CachedField {
+	public abstract static class CachedField {
 		final Field field;
 		String name;
 		Class valueClass;
 		Serializer serializer;
-		boolean canBeNull, varEncoding = true, optimizePositive;
+		boolean canBeNull, varEncoding = true, optimizePositive, reuseSerializer = true;
 
 		// For AsmField.
 		FieldAccess access;
@@ -304,6 +306,17 @@ public class FieldSerializer<T> extends Serializer<T> {
 			return optimizePositive;
 		}
 
+		/** When true, serializers are re-used for all instances of the field if the {@link #valueClass} is known. Re-using
+		 * serializers is significantly faster than looking them up for every read/write. However, this only works reliably when the
+		 * {@link #valueClass} of the field never changes. Serializers that do not guarantee this must set the flag to false. */
+		void setReuseSerializer (boolean reuseSerializer) {
+			this.reuseSerializer = reuseSerializer;
+		}
+
+		boolean getReuseSerializer () {
+			return reuseSerializer;
+		}
+
 		public String getName () {
 			return name;
 		}
@@ -316,11 +329,12 @@ public class FieldSerializer<T> extends Serializer<T> {
 			return name;
 		}
 
-		abstract public void write (Output output, Object object);
+		public abstract void write (Output output, Object object);
 
-		abstract public void read (Input input, Object object);
+		public abstract void read (Input input, Object object);
 
-		abstract public void copy (Object original, Object copy);
+		public abstract void copy (Object original, Object copy);
+
 	}
 
 	/** Indicates a field should be ignored when its declaring class is registered unless the {@link Kryo#getContext() context} has
@@ -369,7 +383,7 @@ public class FieldSerializer<T> extends Serializer<T> {
 	}
 
 	/** Configuration for FieldSerializer instances. */
-	static public class FieldSerializerConfig implements Cloneable {
+	public static class FieldSerializerConfig implements Cloneable {
 		boolean fieldsCanBeNull = true;
 		boolean setFieldsAsAccessible = true;
 		boolean ignoreSyntheticFields = true;

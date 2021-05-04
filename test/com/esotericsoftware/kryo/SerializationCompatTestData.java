@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -70,7 +70,8 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
 /** Testdata for serialization compatibility check. */
-public class SerializationCompatTestData {
+@SuppressWarnings("unused")
+class SerializationCompatTestData {
 
 	static class TestDataJava8 extends TestData {
 		private Optional<String> optionalString;
@@ -114,7 +115,7 @@ public class SerializationCompatTestData {
 		}
 	}
 
-	static public class TestData implements Serializable {
+	public static class TestData implements Serializable {
 		private boolean _boolean;
 		private char _char;
 		private byte _byte;
@@ -217,7 +218,7 @@ public class SerializationCompatTestData {
 			_integerArray = new Integer[] {13};
 
 			_date = new Date(42);
-			_calendar = Calendar.getInstance();
+			_calendar = Calendar.getInstance(Locale.ENGLISH);
 			_calendar.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
 			_calendar.set(2009, Calendar.JANUARY, 25, 10, 29, 0);
 			_calendar.set(Calendar.MILLISECOND, 0);
@@ -352,7 +353,7 @@ public class SerializationCompatTestData {
 		return person;
 	}
 
-	static public class Person {
+	public static class Person {
 
 		static enum Gender {
 			MALE, FEMALE
@@ -475,9 +476,9 @@ public class SerializationCompatTestData {
 
 	}
 
-	static public class Email implements Serializable {
+	public static class Email implements Serializable {
 
-		static private final long serialVersionUID = 1L;
+		private static final long serialVersionUID = 1L;
 
 		private String _name;
 		private String _email;
@@ -549,7 +550,7 @@ public class SerializationCompatTestData {
 
 	}
 
-	static public class PublicClass {
+	public static class PublicClass {
 		PrivateClass privateClass;
 
 		public PublicClass () {
@@ -568,7 +569,7 @@ public class SerializationCompatTestData {
 		}
 	}
 
-	static private class PrivateClass {
+	private static class PrivateClass {
 		String foo;
 
 		public PrivateClass (String foo) {

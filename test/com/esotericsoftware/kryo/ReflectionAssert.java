@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -19,7 +19,7 @@
 
 package com.esotericsoftware.kryo;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -65,11 +65,11 @@ class ReflectionAssert {
 	 *           implementing class. If <code>false</code>, it's only checked if both objects are a {@link List}, {@link Set} or
 	 *           {@link Map}. */
 	static void assertReflectionEquals (final Object one, final Object another, final boolean requireMatchingCollectionClasses) {
-		assertReflectionEquals(one, another, requireMatchingCollectionClasses, new IdentityHashMap(), "");
+		assertReflectionEquals(one, another, requireMatchingCollectionClasses, new IdentityHashMap<>(), "");
 	}
 
 	// CHECKSTYLE:OFF
-	static private void assertReflectionEquals (final Object one, final Object another,
+	private static void assertReflectionEquals (final Object one, final Object another,
 		final boolean requireMatchingCollectionClasses, final Map<Object, Object> alreadyChecked, final String path) {
 		if (one == another) {
 			return;
@@ -97,25 +97,25 @@ class ReflectionAssert {
 					+ one.getClass() + ", " + another.getClass());
 			}
 		} else {
-			assertEquals("Classes don't match on path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - ", one.getClass(),
-				another.getClass());
+			assertEquals(one.getClass(), another.getClass(),
+				"Classes don't match on path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - ");
 		}
 
 		if (one instanceof AtomicInteger || one instanceof AtomicLong) {
-			assertEquals("Values not equals for path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - ",
-				((Number)one).longValue(), ((Number)another).longValue());
+			assertEquals(((Number)one).longValue(), ((Number)another).longValue(),
+					"Values not equals for path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - ");
 			return;
 		}
 
 		if (one instanceof Calendar) {
-			assertEquals("Values not equals for path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - \n"
-				+ ((Calendar)one).getTimeInMillis() + "\n" + ((Calendar)another).getTimeInMillis() + "\n", one, another);
+			assertEquals(one, another, "Values not equals for path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - \n"
+				+ ((Calendar)one).getTimeInMillis() + "\n" + ((Calendar)another).getTimeInMillis() + "\n");
 			return;
 		}
 
 		if (one.getClass().isPrimitive() || one instanceof String || one instanceof Character || one instanceof Boolean
 			|| one instanceof Number || one instanceof Date) {
-			assertEquals("Values not equals for path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - ", one, another);
+			assertEquals(one, another, "Values not equals for path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - ");
 			return;
 		}
 
@@ -134,11 +134,11 @@ class ReflectionAssert {
 			// correctly (that was issue #34)
 			final Currency currency1 = (Currency)one;
 			final Currency currency2 = (Currency)another;
-			assertEquals("Currency code does not match for currency on path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - ",
-				currency1.getCurrencyCode(), currency2.getCurrencyCode());
-			assertEquals("Currency default fraction digits do not match for currency on path '"
-				+ (StringUtils.isEmpty(path) ? "." : path) + "' - ", currency1.getDefaultFractionDigits(),
-				currency2.getDefaultFractionDigits());
+			assertEquals(currency1.getCurrencyCode(), currency2.getCurrencyCode(),
+				"Currency code does not match for currency on path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - ");
+			assertEquals(currency1.getDefaultFractionDigits(), currency2.getDefaultFractionDigits(),
+				"Currency default fraction digits do not match for currency on path '"
+					+ (StringUtils.isEmpty(path) ? "." : path) + "' - ");
 			return;
 		}
 
@@ -150,12 +150,12 @@ class ReflectionAssert {
 
 	} // CHECKSTYLE:ON
 
-	static private boolean isOnlyOneAssignable (final Class checkedClazz, final Object one, final Object another) {
+	private static boolean isOnlyOneAssignable (final Class checkedClazz, final Object one, final Object another) {
 		return checkedClazz.isAssignableFrom(one.getClass()) && !checkedClazz.isAssignableFrom(another.getClass())
 			|| checkedClazz.isAssignableFrom(another.getClass()) && !checkedClazz.isAssignableFrom(one.getClass());
 	}
 
-	static private boolean oneIsAssignable (final Object one, final Object another, final Class... checkedClazzes) {
+	private static boolean oneIsAssignable (final Object one, final Object another, final Class... checkedClazzes) {
 		for (final Class checkedClazz : checkedClazzes) {
 			if (checkedClazz.isAssignableFrom(one.getClass()) || checkedClazz.isAssignableFrom(another.getClass())) {
 				return true;
@@ -168,10 +168,10 @@ class ReflectionAssert {
 	 * TODO (MG): this assumes same iteration order, which must not be given for sets. There could be a specialized implementation
 	 * for sets.
 	 */
-	static private void assertCollectionEquals (final Collection m1, final Collection m2, final boolean requireMatchingClasses,
+	private static void assertCollectionEquals (final Collection m1, final Collection m2, final boolean requireMatchingClasses,
 		final Map<Object, Object> alreadyChecked, final String path) {
-		assertEquals("Collection size does not match for path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - ", m1.size(),
-			m2.size());
+		assertEquals(m1.size(), m2.size(),
+			"Collection size does not match for path '" + (StringUtils.isEmpty(path) ? "." : path) + "' - ");
 		final Iterator iter1 = m1.iterator();
 		final Iterator iter2 = m2.iterator();
 		int i = 0;
@@ -180,18 +180,19 @@ class ReflectionAssert {
 		}
 	}
 
-	static private void assertMapEquals (final Map<?, ?> m1, final Map<?, ?> m2, final boolean requireMatchingClasses,
-		final Map<Object, Object> alreadyChecked, final String path) {
-		assertEquals("Map size does not match for path '" + (StringUtils.isEmpty(path) ? "." : path) + "', map contents:"
-			+ "\nmap1: " + m1 + "\nmap2: " + m2 + "\n", m1.size(), m2.size());
+	private static void assertMapEquals (final Map<?, ?> m1, final Map<?, ?> m2, final boolean requireMatchingClasses,
+										 final Map<Object, Object> alreadyChecked, final String path) {
+		assertEquals(m1.size(), m2.size(),
+			"Map size does not match for path '" + (StringUtils.isEmpty(path) ? "." : path) + "', map contents:"
+				+ "\nmap1: " + m1 + "\nmap2: " + m2 + "\n");
 		for (final Map.Entry<?, ?> entry : m1.entrySet()) {
 			assertReflectionEquals(entry.getValue(), m2.get(entry.getKey()), requireMatchingClasses, alreadyChecked,
 				path + "[" + entry.getKey() + "]");
 		}
 	}
 
-	static private void assertEqualDeclaredFields (final Class<? extends Object> clazz, final Object one, final Object another,
-		final boolean requireMatchingClasses, final Map<Object, Object> alreadyChecked, final String path) {
+	private static void assertEqualDeclaredFields (final Class<? extends Object> clazz, final Object one, final Object another,
+												   final boolean requireMatchingClasses, final Map<Object, Object> alreadyChecked, final String path) {
 		for (final Field field : clazz.getDeclaredFields()) {
 			field.setAccessible(true);
 			if (!Modifier.isTransient(field.getModifiers())) {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -24,7 +24,7 @@ import com.esotericsoftware.kryo.Serializer;
 /** A serializer which has {@link #setImmutable(boolean)} set to true. This convenience class exists only to reduce the typing
  * needed to define a serializer which is immutable.
  * @author Nathan Sweet */
-abstract public class ImmutableSerializer<T> extends Serializer<T> {
+public abstract class ImmutableSerializer<T> extends Serializer<T> {
 	{
 		setImmutable(true);
 	}

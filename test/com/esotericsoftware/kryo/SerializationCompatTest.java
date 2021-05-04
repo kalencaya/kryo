@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -20,8 +20,8 @@
 package com.esotericsoftware.kryo;
 
 import static com.esotericsoftware.kryo.ReflectionAssert.*;
-import static java.lang.Integer.parseInt;
-import static org.junit.Assert.*;
+import static java.lang.Integer.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.esotericsoftware.kryo.SerializationCompatTestData.TestData;
 import com.esotericsoftware.kryo.SerializationCompatTestData.TestDataJava8;
@@ -37,13 +37,12 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.lang.reflect.Field;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.objenesis.strategy.StdInstantiatorStrategy;
 
 /** Test for serialization compatibility: data serialized with an older version (same major version) must be deserializable with
@@ -69,28 +68,41 @@ import org.objenesis.strategy.StdInstantiatorStrategy;
  * commit the changes. Depending on the situation you may consider creating new files from the smallest version of the same major
  * version (e.g. for 3.1.4 this is 3.0.0) - to do this just save this test and the {@link SerializationCompatTest}, go back to the
  * related tag and run the test (there's nothing here to automate creation of test files for a different version). */
-public class SerializationCompatTest extends KryoTestCase {
+class SerializationCompatTest extends KryoTestCase {
 	// Set to true to delete failed test files, then set back to false, set expected bytes, and run again to generate new files.
-	static private final boolean DELETE_FAILED_TEST_FILES = false;
+	private static final boolean DELETE_FAILED_TEST_FILES = false;
 
-	static private final String ENDIANNESS = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? "le" : "be";
-	static private final int JAVA_VERSION;
+	private static final int JAVA_VERSION;
 	static {
-		// java.version is e.g. 1.8.0 or 9.0.4
+		// java.version is e.g. "1.8.0", "9.0.4", or "14"
 		String[] strVersions = System.getProperty("java.version").split("\\.");
-		int[] versions = new int[] {parseInt(strVersions[0]), parseInt(strVersions[1])};
-		JAVA_VERSION = versions[0] > 1 ? versions[0] : versions[1];
+		if (strVersions.length == 1) {
+			JAVA_VERSION = parseInt(strVersions[0]);
+		} else {
+			int[] versions = new int[] {parseInt(strVersions[0]), parseInt(strVersions[1])};
+			JAVA_VERSION = versions[0] > 1 ? versions[0] : versions[1];
+		}
 	}
-	static private final int EXPECTED_DEFAULT_SERIALIZER_COUNT = JAVA_VERSION < 8 ? 39 : 57; // Also change
-																															// Kryo#defaultSerializers.
-	static private final List<TestDataDescription> TEST_DATAS = new ArrayList<>();
+	private static final int EXPECTED_DEFAULT_SERIALIZER_COUNT = JAVA_VERSION < 11
+			? 58 : JAVA_VERSION < 14 ? 68 : 69;  // Also change Kryo#defaultSerializers.
+	private static final List<TestDataDescription> TEST_DATAS = new ArrayList<>();
 
 	static {
-		TEST_DATAS.add(new TestDataDescription<TestData>("5.0.0", new TestData(), 1940));
-		if (JAVA_VERSION >= 8) TEST_DATAS.add(new TestDataDescription<TestDataJava8>("5.0.0", new TestDataJava8(), 2098));
+		TEST_DATAS.add(new TestDataDescription<>(new TestData(), 1940, 1958));
+		if (JAVA_VERSION >= 8) TEST_DATAS.add(new TestDataDescription<>(new TestDataJava8(), 2098, 2116));
+		if (JAVA_VERSION >= 11) TEST_DATAS.add(new TestDataDescription<>(createTestData(11), 2182, 2210));
+		if (JAVA_VERSION >= 14) TEST_DATAS.add(new TestDataDescription<>(createTestData(14), 1948, 1966));
 	};
 
-	@Before
+	private static TestData createTestData(int version) {
+		try {
+			return (TestData) Class.forName("com.esotericsoftware.kryo.TestDataJava" + version).getConstructor().newInstance();
+		} catch (ReflectiveOperationException e) {
+			throw new RuntimeException("TestDataJava" + version + " could not be instantiated", e);
+		}
+	}
+
+	@BeforeEach
 	public void setUp () throws Exception {
 		super.setUp();
 		kryo.setInstantiatorStrategy(new DefaultInstantiatorStrategy(new StdInstantiatorStrategy()));
@@ -104,20 +116,20 @@ public class SerializationCompatTest extends KryoTestCase {
 	}
 
 	@Test
-	public void testDefaultSerializers () throws Exception {
+	void testDefaultSerializers () throws Exception {
 		Field defaultSerializersField = Kryo.class.getDeclaredField("defaultSerializers");
 		defaultSerializersField.setAccessible(true);
 		List defaultSerializers = (List)defaultSerializersField.get(kryo);
-		assertEquals("The registered default serializers have changed.\n" //
-			+ "Because serialization compatibility shall be checked for default serializers, you must extend " //
-			+ "SerializationCompatTestData.TestData to have a field for the type of the new default serializer.\n" //
-			+ "After that's done, you must create new versions of 'test/resources/data*' because the new TestData instance will " //
-			+ "no longer be equals the formerly written/serialized one.", EXPECTED_DEFAULT_SERIALIZER_COUNT,
-			defaultSerializers.size());
+		assertEquals(EXPECTED_DEFAULT_SERIALIZER_COUNT, defaultSerializers.size(),
+				"The registered default serializers have changed.\n" //
+						+ "Because serialization compatibility shall be checked for default serializers, you must extend " //
+						+ "SerializationCompatTestData.TestData to have a field for the type of the new default serializer.\n" //
+						+ "After that's done, you must create new versions of 'test/resources/data*' because the new TestData instance will " //
+						+ "no longer be equals the formerly written/serialized one.");
 	}
 
 	@Test
-	public void testStandard () throws Exception {
+	void testStandard () throws Exception {
 		runTests("standard", new Function1<File, Input>() {
 			public Input apply (File file) throws FileNotFoundException {
 				return new Input(new FileInputStream(file));
@@ -130,7 +142,7 @@ public class SerializationCompatTest extends KryoTestCase {
 	}
 
 	@Test
-	public void testByteBuffer () throws Exception {
+	void testByteBuffer () throws Exception {
 		runTests("bytebuffer", new Function1<File, Input>() {
 			public Input apply (File file) throws FileNotFoundException {
 				return new ByteBufferInput(new FileInputStream(file));
@@ -189,7 +201,7 @@ public class SerializationCompatTest extends KryoTestCase {
 
 	private void readAndRunTest (TestDataDescription<?> description, Input in) throws FileNotFoundException {
 		TestData actual = kryo.readObject(in, description.testDataClass());
-		roundTrip(description.length, actual);
+		roundTrip(description.length, description.noGenericsLength, actual);
 		try {
 			assertReflectionEquals(actual, description.testData);
 		} catch (AssertionError e) {
@@ -200,7 +212,7 @@ public class SerializationCompatTest extends KryoTestCase {
 	}
 
 	private void runTestAndWrite (TestDataDescription description, Output out) throws FileNotFoundException {
-		roundTrip(description.length, description.testData);
+		roundTrip(description.length, description.noGenericsLength, description.testData);
 		kryo.writeObject(out, description.testData);
 	}
 
@@ -216,15 +228,15 @@ public class SerializationCompatTest extends KryoTestCase {
 		B apply (A input) throws Exception;
 	}
 
-	static private class TestDataDescription<T extends TestData> {
-		private final String kryoVersion;
+	private static class TestDataDescription<T extends TestData> {
 		final T testData;
 		final int length;
+		final int noGenericsLength;
 
-		TestDataDescription (String kryoVersion, T testData, int length) {
-			this.kryoVersion = kryoVersion;
+		TestDataDescription(T testData, int length, int noGenericsLength) {
 			this.testData = testData;
 			this.length = length;
+			this.noGenericsLength = noGenericsLength;
 		}
 
 		Class<T> testDataClass () {

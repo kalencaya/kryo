@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -19,7 +19,7 @@
 
 package com.esotericsoftware.kryo;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
@@ -27,18 +27,17 @@ import com.esotericsoftware.kryo.serializers.MapSerializer;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.TreeMap;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class ReferenceTest extends KryoTestCase {
-	static public class Ordering {
+class ReferenceTest extends KryoTestCase {
+	public static class Ordering {
 		public String order;
 	}
 
-	static public class Stuff extends TreeMap {
+	public static class Stuff extends TreeMap {
 		public Ordering ordering;
 
 		public Stuff (Ordering ordering) {
@@ -47,7 +46,7 @@ public class ReferenceTest extends KryoTestCase {
 	}
 
 	@Test
-	public void testChildObjectBeforeReference () {
+	void testChildObjectBeforeReference () {
 		Ordering ordering = new Ordering();
 		ordering.order = "assbackwards";
 		Stuff stuff = new Stuff(ordering);
@@ -83,7 +82,7 @@ public class ReferenceTest extends KryoTestCase {
 	}
 
 	@Test
-	public void testReadingNestedObjectsFirst () {
+	void testReadingNestedObjectsFirst () {
 		ArrayList list = new ArrayList();
 		list.add("1");
 		list.add("1");
@@ -105,7 +104,7 @@ public class ReferenceTest extends KryoTestCase {
 		roundTrip(23, subList);
 	}
 
-	static public class SubListSerializer extends Serializer<List> {
+	public static class SubListSerializer extends Serializer<List> {
 		private Field listField, offsetField, sizeField;
 
 		public SubListSerializer () {
@@ -142,7 +141,7 @@ public class ReferenceTest extends KryoTestCase {
 		}
 	}
 
-	static public class ArraySubListSerializer extends Serializer<List> {
+	public static class ArraySubListSerializer extends Serializer<List> {
 		private Field parentField, offsetField, sizeField;
 
 		public ArraySubListSerializer () {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -153,13 +153,14 @@ public class TaggedFieldSerializer<T> extends FieldSerializer<T> {
 				}
 				cachedField.setCanBeNull(false);
 				cachedField.setValueClass(valueClass);
+				cachedField.setReuseSerializer(false);
 			}
 
 			cachedField.write(fieldOutput, object);
 			if (chunked) outputChunked.endChunk();
 		}
 
-		if (pop > 0) popTypeVariables(pop);
+		popTypeVariables(pop);
 	}
 
 	/** Can be overidden to write data needed for {@link #create(Kryo, Input, Class)}. The default implementation does nothing. */
@@ -221,6 +222,7 @@ public class TaggedFieldSerializer<T> extends FieldSerializer<T> {
 				}
 				cachedField.setCanBeNull(false);
 				cachedField.setValueClass(valueClass);
+				cachedField.setReuseSerializer(false);
 			} else if (cachedField == null) {
 				if (!chunked) throw new KryoException("Unknown field tag: " + tag + " (" + getType().getName() + ")");
 				if (TRACE) trace("kryo", "Skip unknown field tag: " + tag);
@@ -233,7 +235,7 @@ public class TaggedFieldSerializer<T> extends FieldSerializer<T> {
 			if (chunked) inputChunked.nextChunk();
 		}
 
-		if (pop > 0) popTypeVariables(pop);
+		popTypeVariables(pop);
 		return object;
 	}
 
@@ -249,7 +251,7 @@ public class TaggedFieldSerializer<T> extends FieldSerializer<T> {
 	}
 
 	/** Configuration for TaggedFieldSerializer instances. */
-	static public class TaggedFieldSerializerConfig extends FieldSerializerConfig {
+	public static class TaggedFieldSerializerConfig extends FieldSerializerConfig {
 		boolean readUnknownTagData, chunked;
 		int chunkSize = 1024;
 

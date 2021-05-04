@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -19,20 +19,20 @@
 
 package com.esotericsoftware.kryo.serializers;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.esotericsoftware.kryo.KryoTestCase;
 import com.esotericsoftware.kryo.serializers.VersionFieldSerializer.Since;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class VersionedFieldSerializerTest extends KryoTestCase {
+class VersionedFieldSerializerTest extends KryoTestCase {
 	{
 		supportsCopy = true;
 	}
 
 	@Test
-	public void testVersionFieldSerializer () {
+	void testVersionFieldSerializer () {
 		TestClass object1 = new TestClass();
 		object1.moo = 2;
 		object1.child = null;
@@ -53,7 +53,7 @@ public class VersionedFieldSerializerTest extends KryoTestCase {
 		assertEquals(object2.other.value, object1.other.value);
 	}
 
-	static public class TestClass {
+	public static class TestClass {
 		@Since(1) public String text = "something";
 		@Since(1) public int moo = 120;
 		@Since(2) public long moo2 = 1234120;
@@ -79,11 +79,11 @@ public class VersionedFieldSerializerTest extends KryoTestCase {
 		}
 	}
 
-	static public class AnotherClass {
+	public static class AnotherClass {
 		@Since(1) String value;
 	}
 
-	static private class FutureClass {
+	private static class FutureClass {
 		@Since(0) public Integer value;
 		@Since(1) public FutureClass2 futureClass2;
 		@Since(2) public String futureString = "unchanged";
@@ -121,7 +121,7 @@ public class VersionedFieldSerializerTest extends KryoTestCase {
 		}
 	}
 
-	static private class FutureClass2 {
+	private static class FutureClass2 {
 		@Since(0) public String text = "something";
 		@Since(1) public int moo = 120;
 		@Since(2) public long moo2 = 1234120;

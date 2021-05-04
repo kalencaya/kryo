@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -26,9 +26,8 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 
 /** Uses an {@link IdentityHashMap} to track objects that have already been written. This can handle a graph with any number of
- * objects, but is slightly slower than {@link ListReferenceResolver} for graphs with few objects. Compared to
- * {@link MapReferenceResolver}, this may provide better performance for object graphs with a very high number of objects since
- * the IdentityHashMap does less work for put, even though put allocates.
+ * objects, but is slightly slower than {@link MapReferenceResolver} because IdentityHashMap allocates on put and slower slower
+ * than {@link ListReferenceResolver} for graphs with few objects.
  * @author Nathan Sweet */
 public class HashMapReferenceResolver implements ReferenceResolver {
 	protected Kryo kryo;

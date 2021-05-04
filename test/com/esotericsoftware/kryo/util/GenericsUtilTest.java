@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -20,7 +20,7 @@
 package com.esotericsoftware.kryo.util;
 
 import static com.esotericsoftware.kryo.util.GenericsUtil.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
@@ -28,12 +28,12 @@ import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /** @author Nathan Sweet */
-public class GenericsUtilTest {
+class GenericsUtilTest {
 	@Test
-	public void testGenerics () throws Exception {
+	void testGenerics () throws Exception {
 		String[] names = { //
 			"ArrayList<String> fromField1", //
 			"ArrayList<FLOAT> fromSubClass", //
@@ -104,11 +104,11 @@ public class GenericsUtilTest {
 			System.out.println(value1);
 			System.out.println(value2);
 			System.out.println();
-			assertTrue(value1 + " != " + value2, value1.equalsIgnoreCase(value2));
+			assertTrue(value1.equalsIgnoreCase(value2), value1 + " != " + value2);
 		}
 	}
 
-	static public class Test1<FLOAT, STRING, NULL> {
+	public static class Test1<FLOAT, STRING, NULL> {
 		public ArrayList<String> fromField1;
 		public ArrayList<FLOAT> fromSubClass;
 		public ArrayList<STRING> fromSubSubClass;
@@ -118,7 +118,7 @@ public class GenericsUtilTest {
 		public STRING[] arrayFromSubSubClass;
 	}
 
-	static public class Test2<STRING, NULL, ARRAYLIST> extends Test1<Float, STRING, NULL> {
+	public static class Test2<STRING, NULL, ARRAYLIST> extends Test1<Float, STRING, NULL> {
 		public STRING known;
 		public STRING[] array1;
 		public STRING[][] array2;
@@ -131,7 +131,7 @@ public class GenericsUtilTest {
 		public ArrayList<ARRAYLIST>[] parameterizedArrayFromSubClass;
 	}
 
-	static public class Test3<DOUBLE extends Number & Comparable, NULL, LONG> extends Test2<String, NULL, ArrayList<LONG>> {
+	public static class Test3<DOUBLE extends Number & Comparable, NULL, LONG> extends Test2<String, NULL, ArrayList<LONG>> {
 		public ArrayList<String> fromField3;
 		public ArrayList raw;
 		public NULL unknown2;
@@ -142,10 +142,10 @@ public class GenericsUtilTest {
 		public ArrayList<DOUBLE> multipleUpperBounds;
 	}
 
-	static public class Test4<NULL> extends Test3<Double, NULL, Long> {
+	public static class Test4<NULL> extends Test3<Double, NULL, Long> {
 	}
 
-	static public void main (String[] args) throws Exception {
+	public static void main (String[] args) throws Exception {
 		new GenericsUtilTest().testGenerics();
 	}
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -19,7 +19,7 @@
 
 package com.esotericsoftware.kryo.serializers;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoTestCase;
@@ -35,16 +35,16 @@ import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /** @author Nathan Sweet */
-public class CollectionSerializerTest extends KryoTestCase {
+class CollectionSerializerTest extends KryoTestCase {
 	{
 		supportsCopy = true;
 	}
 
 	@Test
-	public void testCollections () {
+	void testCollections () {
 		kryo.register(ArrayList.class);
 		kryo.register(LinkedList.class);
 		kryo.register(CopyOnWriteArrayList.class);
@@ -104,7 +104,7 @@ public class CollectionSerializerTest extends KryoTestCase {
 	}
 
 	@Test
-	public void testCopy () {
+	void testCopy () {
 		List objects1 = Collections.singletonList(new Object());
 		Kryo kryo = new Kryo();
 		kryo.setRegistrationRequired(false);
@@ -112,7 +112,7 @@ public class CollectionSerializerTest extends KryoTestCase {
 		assertNotSame(objects1.get(0), objects2.get(0));
 	}
 
-	static public class TreeSetSubclass<E> extends TreeSet<E> {
+	public static class TreeSetSubclass<E> extends TreeSet<E> {
 		public TreeSetSubclass () {
 		}
 

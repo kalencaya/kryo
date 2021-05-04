@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -45,10 +45,10 @@ import java.lang.reflect.Method;
 public class ClosureSerializer extends Serializer {
 	/** Marker class used to find the class {@link Registration} for closure instances.
 	 * @see Kryo#isClosure(Class) */
-	static public class Closure {
+	public static class Closure {
 	}
 
-	static private Method readResolve;
+	private static Method readResolve;
 
 	public ClosureSerializer () {
 		if (readResolve == null) {
@@ -66,7 +66,7 @@ public class ClosureSerializer extends Serializer {
 		int count = serializedLambda.getCapturedArgCount();
 		output.writeVarInt(count, true);
 		for (int i = 0; i < count; i++)
-			kryo.writeObject(output, serializedLambda.getCapturedArg(i));
+			kryo.writeClassAndObject(output, serializedLambda.getCapturedArg(i));
 		try {
 			kryo.writeClass(output, Class.forName(serializedLambda.getCapturingClass().replace('/', '.')));
 		} catch (ClassNotFoundException ex) {

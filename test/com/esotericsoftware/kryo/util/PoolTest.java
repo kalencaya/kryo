@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -19,64 +19,64 @@
 
 package com.esotericsoftware.kryo.util;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoTestCase;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-@RunWith(Parameterized.class)
-public class PoolTest extends KryoTestCase {
-	@Parameters
-	static public Collection<Object[]> data () {
-		return Arrays.asList(new Object[][] {{new Pool<Kryo>(true, false, 16) {
-			protected Kryo create () {
-				return new Kryo();
-			}
-		}}, {new Pool<Kryo>(true, true, 16) {
-			protected Kryo create () {
-				return new Kryo();
-			}
-		}}});
+class PoolTest extends KryoTestCase {
+
+	private static final int MAXIMUM_CAPACITY = 4;
+	
+	public static Collection<Object[]> data () {
+		return Arrays.asList(new Object[][] {
+			{new TestPool(false, false, MAXIMUM_CAPACITY)},
+			{new TestPool(true, false, MAXIMUM_CAPACITY)},
+			{new TestPool(false, true, MAXIMUM_CAPACITY)},
+			{new TestPool(true, true, MAXIMUM_CAPACITY)}});
 	}
 
-	private final Pool<Kryo> pool;
-
-	public PoolTest (Pool<Kryo> pool) {
-		this.pool = pool;
-	}
-
-	@Before
-	public void beforeMethod () {
-		// clear the pool's queue
-		pool.clear();
-	}
-
-	@Test
-	public void getShouldReturnAvailableInstance () {
+	@ParameterizedTest
+	@MethodSource("data")
+	void obtainShouldReturnAvailableInstance (Pool<Kryo> pool) {
 		Kryo kryo = pool.obtain();
 		pool.free(kryo);
 		assertSame(kryo, pool.obtain());
 	}
 
-	@Test
-	public void releaseShouldAddKryoToPool () {
+	@ParameterizedTest
+	@MethodSource("data")
+	void freeShouldAddKryoToPool (Pool<Kryo> pool) {
 		assertEquals(0, pool.getFree());
 		Kryo kryo = pool.obtain();
 		pool.free(kryo);
 		assertEquals(1, pool.getFree());
 	}
 
-	@Test
-	public void testSize () {
+	@ParameterizedTest
+	@MethodSource("data")
+	void freeShouldNotAddMoreThanMaximumCapacityToKryoPool (Pool<Kryo> pool) {
+		final List<Kryo> kryos = IntStream.rangeClosed(0, MAXIMUM_CAPACITY + 1)
+			.mapToObj(i -> pool.obtain())
+			.collect(Collectors.toList());
+		for (Kryo kryo : kryos) {
+			pool.free(kryo);
+		}
+		assertEquals(MAXIMUM_CAPACITY, pool.getFree());
+	}
+
+	@ParameterizedTest
+	@MethodSource("data")
+	void testSize (Pool<Kryo> pool) {
 		assertEquals(0, pool.getFree());
 		Kryo kryo1 = pool.obtain();
 		assertEquals(0, pool.getFree());
@@ -86,5 +86,32 @@ public class PoolTest extends KryoTestCase {
 		assertEquals(1, pool.getFree());
 		pool.free(kryo2);
 		assertEquals(2, pool.getFree());
+	}
+
+	private static class TestPool extends Pool<Kryo> {
+
+		private final boolean threadSafe;
+		private final boolean softReferences;
+		private final int maximumCapacity;
+
+		public TestPool (boolean threadSafe, boolean softReferences, int maximumCapacity) {
+			super(threadSafe, softReferences, maximumCapacity);
+			this.threadSafe = threadSafe;
+			this.softReferences = softReferences;
+			this.maximumCapacity = maximumCapacity;
+		}
+
+		@Override
+		protected Kryo create () {
+			return new Kryo();
+		}
+
+		public String toString() {
+			return "TestPool{" +
+					"threadSafe=" + threadSafe +
+					", softReferences=" + softReferences +
+					", maximumCapacity=" + maximumCapacity +
+					'}';
+		}
 	}
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -177,7 +177,7 @@ public class MapSerializer<T extends Map> extends Serializer<T> {
 			if (size < 3)
 				size++;
 			else if (size < 1073741824) // Max POT.
-				size = (int)((float)size / 0.75f + 1); // 0.75 is the default load factor.
+				size = (int)(size / 0.75f + 1); // 0.75 is the default load factor.
 			return (T)new HashMap(size);
 		}
 		return kryo.newInstance(type);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -20,8 +20,6 @@
 package com.esotericsoftware.kryo.serializers;
 
 import com.esotericsoftware.kryo.KryoTestCase;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.GenericsTest.A.DontPassToSuper;
 import com.esotericsoftware.kryo.serializers.GenericsTest.ClassWithMap.MapKey;
 
@@ -32,23 +30,25 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class GenericsTest extends KryoTestCase {
+class GenericsTest extends KryoTestCase {
 	{
 		supportsCopy = true;
 	}
 
-	@Before
+	@BeforeEach
 	public void setUp () throws Exception {
 		super.setUp();
 	}
 
 	@Test
-	public void testGenericClassWithGenericFields () {
+	void testGenericClassWithGenericFields () {
 		kryo.setReferences(true);
 		kryo.setRegistrationRequired(false);
 		kryo.register(BaseGeneric.class);
@@ -61,7 +61,7 @@ public class GenericsTest extends KryoTestCase {
 	}
 
 	@Test
-	public void testNonGenericClassWithGenericSuperclass () {
+	void testNonGenericClassWithGenericSuperclass () {
 		kryo.setReferences(true);
 		kryo.setRegistrationRequired(false);
 		kryo.register(BaseGeneric.class);
@@ -76,36 +76,31 @@ public class GenericsTest extends KryoTestCase {
 
 	// Test for/from https://github.com/EsotericSoftware/kryo/issues/377
 	@Test
-	public void testDifferentTypeArguments () {
+	void testDifferentTypeArguments () {
 		LongHolder o1 = new LongHolder(1L);
 		LongListHolder o2 = new LongListHolder(Arrays.asList(1L));
 
 		kryo.setRegistrationRequired(false);
-		Output buffer = new Output(512, 4048);
-		kryo.writeClassAndObject(buffer, o1);
-		kryo.writeClassAndObject(buffer, o2);
+
+		roundTrip(65, o1);
+		roundTrip(99, o2);
 	}
 
 	// https://github.com/EsotericSoftware/kryo/issues/611
 	@Test
-	public void testSuperGenerics () {
+	void testSuperGenerics () {
 		kryo.register(SuperGenerics.Root.class);
 		kryo.register(SuperGenerics.Value.class);
 
-		Output output = new Output(2048, -1);
-
 		SuperGenerics.Root root = new SuperGenerics.Root();
 		root.rootSuperField = new SuperGenerics.Value();
-		kryo.writeObject(output, root);
-		output.flush();
 
-		Input input = new Input(output.getBuffer(), 0, output.position());
-		SuperGenerics.Root root2 = kryo.readObject(input, SuperGenerics.Root.class);
+		roundTrip(4, root);
 	}
 
 	// https://github.com/EsotericSoftware/kryo/issues/648
 	@Test
-	public void testMapTypeParams () {
+	void testMapTypeParams () {
 		ClassWithMap hasMap = new ClassWithMap();
 		MapKey key = new MapKey();
 		key.field1 = "foo";
@@ -125,16 +120,77 @@ public class GenericsTest extends KryoTestCase {
 
 	// https://github.com/EsotericSoftware/kryo/issues/622
 	@Test
-	public void testNotPassingToSuper () {
+	void testNotPassingToSuper () {
 		kryo.register(DontPassToSuper.class);
-		kryo.copy(new DontPassToSuper());
+		kryo.copy(new DontPassToSuper<>());
+	}
+
+	// Test for https://github.com/EsotericSoftware/kryo/issues/654
+	@Test
+	void testFieldWithGenericInterface () {
+		ClassWithGenericInterfaceField.A o = new ClassWithGenericInterfaceField.A();
+
+		kryo.setRegistrationRequired(false);
+
+		roundTrip(170, o);
+	}
+
+	// Test for https://github.com/EsotericSoftware/kryo/issues/655
+	@Test
+	void testFieldWithGenericArrayType() {
+		ClassArrayHolder o = new ClassArrayHolder(new Class[] {});
+
+		kryo.setRegistrationRequired(false);
+
+		roundTrip(70, o);
+	}
+
+	// Test for https://github.com/EsotericSoftware/kryo/issues/655
+	@Test
+	void testClassWithMultipleGenericTypes() {
+		HolderWithAdditionalGenericType<String, Integer> o = new HolderWithAdditionalGenericType<>(1);
+
+		kryo.setRegistrationRequired(false);
+
+		roundTrip(87, o);
+	}
+
+	// Test for https://github.com/EsotericSoftware/kryo/issues/655
+	@Test
+	void testClassHierarchyWithChangingGenericTypeVariables () {
+		ClassHierarchyWithChangingTypeVariableNames.A<?> o = new ClassHierarchyWithChangingTypeVariableNames.A<>(Enum.class);
+
+		kryo.setRegistrationRequired(false);
+
+		roundTrip(131, o);
+	}
+
+	// Test for https://github.com/EsotericSoftware/kryo/issues/655
+	@Test
+	void testClassHierarchyWithMultipleTypeVariables () {
+		ClassHierarchyWithMultipleTypeVariables.A<Integer, ?> o = new ClassHierarchyWithMultipleTypeVariables.A<>(Enum.class);
+
+		kryo.setRegistrationRequired(false);
+
+		roundTrip(110, o);
+	}
+
+	// Test for https://github.com/EsotericSoftware/kryo/issues/721
+	@Test
+	void testClassHierarchyWithMissingTypeVariables () {
+		ClassWithMissingTypeVariable.A o = new ClassWithMissingTypeVariable.A(
+				new ClassWithMissingTypeVariable.B<>(1));
+
+		kryo.setRegistrationRequired(false);
+
+		roundTrip(168, o);
 	}
 
 	private interface Holder<V> {
 		V getValue ();
 	}
 
-	static private abstract class AbstractValueHolder<V> implements Holder<V> {
+	private abstract static class AbstractValueHolder<V> implements Holder<V> {
 		private final V value;
 
 		AbstractValueHolder (V value) {
@@ -144,28 +200,79 @@ public class GenericsTest extends KryoTestCase {
 		public V getValue () {
 			return value;
 		}
+
+		@Override
+		public boolean equals (Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			final AbstractValueHolder<?> that = (AbstractValueHolder<?>)o;
+			return Objects.deepEquals(value, that.value);
+		}
 	}
 
-	static private abstract class AbstractValueListHolder<V> extends AbstractValueHolder<List<V>> {
+	private abstract static class AbstractValueListHolder<V> extends AbstractValueHolder<List<V>> {
 		AbstractValueListHolder (List<V> value) {
 			super(value);
 		}
 	}
 
-	static private class LongHolder extends AbstractValueHolder<Long> {
+	private static class LongHolder extends AbstractValueHolder<Long> {
+		/** Kryo Constructor */
+		LongHolder () {
+			super(null);
+		}
+
 		LongHolder (Long value) {
 			super(value);
 		}
 	}
 
-	static private class LongListHolder extends AbstractValueListHolder<Long> {
+	private static class LongListHolder extends AbstractValueListHolder<Long> {
+		/** Kryo Constructor */
+		LongListHolder () {
+			super(null);
+		}
+
 		LongListHolder (java.util.List<Long> value) {
 			super(value);
 		}
 	}
 
+	static class ClassArrayHolder extends AbstractValueHolder<Class<?>[]> {
+		/** Kryo Constructor */
+		ClassArrayHolder () {
+			super(null);
+		}
+
+		ClassArrayHolder (Class<?>[] value) {
+			super(value);
+		}
+	}
+
+	static class HolderWithAdditionalGenericType<BT, OT> extends AbstractValueHolder<OT> {
+		private BT value;
+
+		/** Kryo Constructor */
+		HolderWithAdditionalGenericType () {
+			super(null);
+		}
+
+		HolderWithAdditionalGenericType(OT value) {
+			super(value);
+		}
+
+		@Override
+		public boolean equals (Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			if (!super.equals(o)) return false;
+			final HolderWithAdditionalGenericType<?, ?> that = (HolderWithAdditionalGenericType<?, ?>)o;
+			return Objects.equals(value, that.value);
+		}
+	}
+
 	// A simple serializable class.
-	static private class SerializableObjectFoo implements Serializable {
+	private static class SerializableObjectFoo implements Serializable {
 		String name;
 
 		SerializableObjectFoo (String name) {
@@ -188,7 +295,7 @@ public class GenericsTest extends KryoTestCase {
 		}
 	}
 
-	static private class BaseGeneric<T extends Serializable> {
+	private static class BaseGeneric<T extends Serializable> {
 		// The type of this field cannot be derived from the context.
 		// Therefore, Kryo should consider it to be Object.
 		private final List<T> listPayload;
@@ -223,7 +330,7 @@ public class GenericsTest extends KryoTestCase {
 	}
 
 	// This is a non-generic class with a generic superclass.
-	static private class ConcreteClass2 extends BaseGeneric<SerializableObjectFoo> {
+	private static class ConcreteClass2 extends BaseGeneric<SerializableObjectFoo> {
 		/** Kryo Constructor */
 		ConcreteClass2 () {
 			super();
@@ -234,7 +341,7 @@ public class GenericsTest extends KryoTestCase {
 		}
 	}
 
-	static private class ConcreteClass1 extends ConcreteClass2 {
+	private static class ConcreteClass1 extends ConcreteClass2 {
 		/** Kryo Constructor */
 		ConcreteClass1 () {
 			super();
@@ -245,7 +352,7 @@ public class GenericsTest extends KryoTestCase {
 		}
 	}
 
-	static private class ConcreteClass extends ConcreteClass1 {
+	private static class ConcreteClass extends ConcreteClass1 {
 		/** Kryo Constructor */
 		ConcreteClass () {
 			super();
@@ -256,27 +363,40 @@ public class GenericsTest extends KryoTestCase {
 		}
 	}
 
-	static public class SuperGenerics {
-		static public class RootSuper<RS> {
+	public static class SuperGenerics {
+		public static class RootSuper<RS> {
 			public ValueSuper<RS> rootSuperField;
+
+			@Override
+			public boolean equals (Object o) {
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				final RootSuper<?> rootSuper = (RootSuper<?>)o;
+				return Objects.equals(rootSuperField, rootSuper.rootSuperField);
+			}
 		}
 
-		static public class Root extends RootSuper<String> {
+		public static class Root extends RootSuper<String> {
 		}
 
-		static public class ValueSuper<VS> extends ValueSuperSuper<Integer> {
+		public static class ValueSuper<VS> extends ValueSuperSuper<Integer> {
 			VS superField;
 		}
 
-		static public class ValueSuperSuper<VSS> {
+		public static class ValueSuperSuper<VSS> {
 			VSS superSuperField;
 		}
 
-		static public class Value extends ValueSuper<String> {
+		public static class Value extends ValueSuper<String> {
+			@Override
+			public boolean equals (Object o) {
+				if (this == o) return true;
+				return (o != null && getClass() == o.getClass());
+			}
 		}
 	}
 
-	static public class ClassWithMap {
+	public static class ClassWithMap {
 		public final Map<MapKey, Set<String>> values = new HashMap();
 
 		public boolean equals (Object obj) {
@@ -290,7 +410,7 @@ public class GenericsTest extends KryoTestCase {
 			return true;
 		}
 
-		static public class MapKey {
+		public static class MapKey {
 			public String field1, field2;
 
 			public String toString () {
@@ -299,12 +419,150 @@ public class GenericsTest extends KryoTestCase {
 		}
 	}
 
-	static public class A<X> {
-		static public class B<Y> extends A {
+	public static class A<X> {
+		public static class B<Y> extends A {
 		}
 
-		static public class DontPassToSuper<Z> extends B {
+		public static class DontPassToSuper<Z> extends B {
 			B<Z> b;
 		}
 	}
+
+	static class ClassWithGenericInterfaceField {
+		static class A extends B<String> {
+			A () {
+				super(new C());
+			}
+		}
+
+		static class B<T> {
+			Supplier<T> s;
+
+			B (Supplier<T> s) {
+				this.s = s;
+			}
+
+			@Override
+			public boolean equals(Object o) {
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				final B<?> b = (B<?>) o;
+				return Objects.equals(s.get(), b.s.get());
+			}
+
+			@Override
+			public int hashCode() {
+				return Objects.hash(s);
+			}
+		}
+
+		static class C implements Supplier<String>, Serializable {
+			@Override
+			public String get () {
+				return null;
+			}
+		}
+	}
+
+	static class ClassHierarchyWithChangingTypeVariableNames {
+		static final class A<T> extends B<T> {
+			T d;
+
+			/** Kryo Constructor */
+			A () {
+			}
+
+			A (T d) {
+				this.d = d;
+			}
+
+			@Override
+			public boolean equals (Object o) {
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				final A<?> a = (A<?>)o;
+				return Objects.equals(d, a.d);
+			}
+		}
+
+		static class B<E> extends C<E> {
+		}
+
+		static class C<E> {
+		}
+	}
+
+	static class ClassHierarchyWithMultipleTypeVariables {
+		static class A<T, S> extends B<T> {
+			Class<S> s;
+
+			/** Kryo Constructor */
+			A () {
+			}
+
+			A (Class<S> s) {
+				this.s = s;
+			}
+
+			@Override
+			public boolean equals (Object o) {
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				final A<?, ?> a = (A<?, ?>)o;
+				return Objects.equals(s, a.s);
+			}
+		}
+
+		static class B<T> extends C<T> {
+		}
+
+		public static class C<T> {
+		}
+	}
+
+	static class ClassWithMissingTypeVariable {
+		static final class A {
+			C<String> c;
+
+			/** Kryo Constructor */
+			A () {
+			}
+
+			A (C<String> c) {
+				this.c = c;
+			}
+
+			@Override
+			public boolean equals (Object o) {
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				final A a = (A)o;
+				return Objects.equals(c, a.c);
+			}
+		}
+
+		static class B<R, V> implements C<V> {
+			R r;
+
+			/** Kryo Constructor */
+			B () {
+			}
+
+			B (R r) {
+				this.r = r;
+			}
+
+			@Override
+			public boolean equals(Object o) {
+				if (this == o) return true;
+				if (o == null || getClass() != o.getClass()) return false;
+				final B<?, ?> b = (B<?, ?>) o;
+				return Objects.equals(r, b.r);
+			}
+		}
+
+		interface C<T> {
+		}
+	}
+
 }

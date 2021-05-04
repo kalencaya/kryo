@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -36,7 +36,7 @@ import javax.crypto.spec.SecretKeySpec;
  * @author Nathan Sweet */
 public class BlowfishSerializer extends Serializer {
 	private final Serializer serializer;
-	static private SecretKeySpec keySpec;
+	private static SecretKeySpec keySpec;
 
 	public BlowfishSerializer (Serializer serializer, byte[] key) {
 		this.serializer = serializer;
@@ -70,7 +70,7 @@ public class BlowfishSerializer extends Serializer {
 		return serializer.copy(kryo, original);
 	}
 
-	static private Cipher getCipher (int mode) {
+	private static Cipher getCipher (int mode) {
 		try {
 			Cipher cipher = Cipher.getInstance("Blowfish");
 			cipher.init(mode, keySpec);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -20,7 +20,7 @@
 package com.esotericsoftware.kryo;
 
 import static com.esotericsoftware.minlog.Log.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.esotericsoftware.kryo.io.ByteBufferInput;
 import com.esotericsoftware.kryo.io.ByteBufferOutput;
@@ -36,16 +36,17 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 /** Convenience methods for round tripping objects.
  * @author Nathan Sweet */
-abstract public class KryoTestCase {
+public abstract class KryoTestCase {
 	// When true, roundTrip will only do a single write/read to make debugging easier (breaks some tests).
-	static private final boolean debug = false;
+	private static final boolean debug = false;
 
 	protected Kryo kryo;
 	protected Output output;
@@ -65,11 +66,28 @@ abstract public class KryoTestCase {
 		public Input createInput (byte[] buffer);
 	}
 
-	@Before
+	@BeforeEach
 	public void setUp () throws Exception {
 		if (debug && WARN) warn("*** DEBUG TEST ***");
 
 		kryo = new Kryo();
+	}
+
+	/** @param lengthGenerics Pass Integer.MIN_VALUE to disable checking the length for the generic serialization.
+	 * @param lengthNoGenerics Pass Integer.MIN_VALUE to disable checking the length for the non-generic serialization. */
+	public <T> void roundTrip (int lengthGenerics, int lengthNoGenerics, T object1) {
+		roundTrip(lengthGenerics, object1, true);
+		roundTrip(lengthNoGenerics, object1, false);
+	}
+
+	/** @param length Pass Integer.MIN_VALUE to disable checking the length. */
+	private <T> void roundTrip (int length, T object1, boolean optimizedGenerics) {
+		try {
+			kryo.setOptimizedGenerics(optimizedGenerics);
+			roundTrip(length, object1);
+		} finally {
+			kryo.setOptimizedGenerics(true);
+		}
 	}
 
 	/** @param length Pass Integer.MIN_VALUE to disable checking the length. */
@@ -116,9 +134,8 @@ abstract public class KryoTestCase {
 			}
 
 			public Input createInput (byte[] buffer) {
-				ByteBuffer byteBuffer = ByteBuffer.allocateDirect(buffer.length);
-				byteBuffer.put(buffer).flip();
-				return new ByteBufferInput(byteBuffer);
+				ByteBuffer byteBuffer = allocateByteBuffer(buffer);
+				return new ByteBufferInput(byteBuffer.asReadOnlyBuffer());
 			}
 		});
 
@@ -162,13 +179,19 @@ abstract public class KryoTestCase {
 			}
 
 			public Input createInput (byte[] buffer) {
-				ByteBuffer byteBuffer = ByteBuffer.allocateDirect(buffer.length);
-				byteBuffer.put(buffer).flip();
-				return new UnsafeByteBufferInput(byteBuffer);
+				ByteBuffer byteBuffer = allocateByteBuffer(buffer);
+				return new UnsafeByteBufferInput(byteBuffer.asReadOnlyBuffer());
 			}
 		});
 
 		return object2;
+	}
+
+	private ByteBuffer allocateByteBuffer(byte[] buffer) {
+		ByteBuffer byteBuffer = ByteBuffer.allocateDirect(buffer.length);
+		byteBuffer.put(buffer);
+		((Buffer) byteBuffer).flip();
+		return byteBuffer;
 	}
 
 	/** @param length Pass Integer.MIN_VALUE to disable checking the length. */
@@ -186,13 +209,12 @@ abstract public class KryoTestCase {
 		if (debug) System.out.println();
 
 		// Test input from stream, large buffer.
-		byte[] out = outStream.toByteArray();
 		input = sf.createInput(new ByteArrayInputStream(outStream.toByteArray()), 4096);
 		object2 = kryo.readClassAndObject(input);
 		doAssertEquals(object1, object2);
 		if (checkLength) {
-			assertEquals("Incorrect number of bytes read.", length, input.total());
-			assertEquals("Incorrect number of bytes written.", length, output.total());
+			assertEquals(length, input.total(), "Incorrect number of bytes read.");
+			assertEquals(length, output.total(), "Incorrect number of bytes written.");
 		}
 
 		if (debug) return (T)object2;
@@ -207,7 +229,7 @@ abstract public class KryoTestCase {
 		input = sf.createInput(new ByteArrayInputStream(outStream.toByteArray()), 10);
 		object2 = kryo.readClassAndObject(input);
 		doAssertEquals(object1, object2);
-		if (checkLength) assertEquals("Incorrect number of bytes read.", length, input.total());
+		if (checkLength) assertEquals(length, input.total(), "Incorrect number of bytes read.");
 
 		if (object1 != null) {
 			// Test null with serializer.
@@ -235,8 +257,8 @@ abstract public class KryoTestCase {
 		object2 = kryo.readClassAndObject(input);
 		doAssertEquals(object1, object2);
 		if (checkLength) {
-			assertEquals("Incorrect length.", length, output.total());
-			assertEquals("Incorrect number of bytes read.", length, input.total());
+			assertEquals( length, output.total(), "Incorrect length.");
+			assertEquals( length, input.total(), "Incorrect number of bytes read.");
 		}
 		input.reset();
 
@@ -248,6 +270,9 @@ abstract public class KryoTestCase {
 			doAssertEquals(object1, copy);
 		}
 
+		// Ensure generic types are balanced after each round of serialization
+		assertEquals(0, kryo.getGenerics().getGenericTypesSize());
+
 		return (T)object2;
 	}
 
@@ -255,7 +280,7 @@ abstract public class KryoTestCase {
 		assertEquals(arrayToList(object1), arrayToList(object2));
 	}
 
-	static public Object arrayToList (Object array) {
+	public static Object arrayToList (Object array) {
 		if (array == null || !array.getClass().isArray()) return array;
 		ArrayList list = new ArrayList(Array.getLength(array));
 		for (int i = 0, n = Array.getLength(array); i < n; i++)
@@ -263,7 +288,7 @@ abstract public class KryoTestCase {
 		return list;
 	}
 
-	static public ArrayList list (Object... items) {
+	public static ArrayList list (Object... items) {
 		ArrayList list = new ArrayList();
 		for (Object item : items)
 			list.add(item);

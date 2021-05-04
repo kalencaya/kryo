@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -33,15 +33,15 @@ public class GenericsUtil {
 	/** Returns the class for the specified type after replacing any type variables using the class hierarchy between the specified
 	 * classes.
 	 * @param toClass Must be a sub class of fromClass. */
-	static public Type resolveType (Class fromClass, Class toClass, Type type) {
+	public static Type resolveType (Class fromClass, Class toClass, Type type) {
 		// Explicit type, eg String.
-		if (type instanceof Class) return (Class)type;
+		if (type instanceof Class) return type;
 
 		// Type variable, eg T.
 		if (type instanceof TypeVariable) return resolveTypeVariable(fromClass, toClass, type, true);
 
 		// Type which has a type parameter, eg ArrayList<T> or ArrayList<ArrayList<T>>.
-		if (type instanceof ParameterizedType) return (Class)((ParameterizedType)type).getRawType();
+		if (type instanceof ParameterizedType) return ((ParameterizedType)type).getRawType();
 
 		// Array which has a type variable, eg T[] or T[][], and also arrays with a type parameter, eg ArrayList<T>[].
 		if (type instanceof GenericArrayType) {
@@ -76,7 +76,7 @@ public class GenericsUtil {
 	 * @param current Must be a sub class of fromClass.
 	 * @return A Class if the type variable was resolved, else a TypeVariable to continue searching or if the type could not be
 	 *         resolved. */
-	static private Type resolveTypeVariable (Class fromClass, Class current, Type type, boolean first) {
+	private static Type resolveTypeVariable (Class fromClass, Class current, Type type, boolean first) {
 		Type genericSuper = current.getGenericSuperclass();
 		if (!(genericSuper instanceof ParameterizedType)) return type; // No type arguments passed to super class.
 
@@ -84,7 +84,7 @@ public class GenericsUtil {
 		Class superClass = current.getSuperclass();
 		if (superClass != fromClass) {
 			Type resolved = resolveTypeVariable(fromClass, superClass, type, false);
-			if (resolved instanceof Class) return (Class)resolved; // Resolved in a super class.
+			if (resolved instanceof Class) return resolved; // Resolved in a super class.
 			type = resolved;
 		}
 
@@ -98,8 +98,9 @@ public class GenericsUtil {
 				Type arg = ((ParameterizedType)genericSuper).getActualTypeArguments()[i];
 
 				// Success, the type variable was explicitly declared.
-				if (arg instanceof Class) return (Class)arg;
+				if (arg instanceof Class) return arg;
 				if (arg instanceof ParameterizedType) return resolveType(fromClass, current, arg);
+				if (arg instanceof GenericArrayType) return resolveType(fromClass, current, arg);
 
 				if (arg instanceof TypeVariable) {
 					if (first) return type; // Failure, no more sub classes.
@@ -108,8 +109,9 @@ public class GenericsUtil {
 			}
 		}
 
-		// If this happens, there is a case we need to handle.
-		throw new KryoException("Unable to resolve type variable: " + type);
+		// We have exhausted looking through superclasses for a concrete generic type
+		// definition, so we return the type variable instead.
+		return type;
 	}
 
 	/** Resolves type variables for the type parameters of the specified type by using the class hierarchy between the specified
@@ -117,7 +119,7 @@ public class GenericsUtil {
 	 * @param toClass Must be a sub class of fromClass.
 	 * @return Null if the type has no type parameters, else contains Class entries for type parameters that were resolved and
 	 *         TypeVariable entries for type parameters that couldn't be resolved. */
-	static public Type[] resolveTypeParameters (Class fromClass, Class toClass, Type type) {
+	public static Type[] resolveTypeParameters (Class fromClass, Class toClass, Type type) {
 		// Type which has a type parameter, eg ArrayList<T>.
 		if (type instanceof ParameterizedType) {
 			Type[] actualArgs = ((ParameterizedType)type).getActualTypeArguments();

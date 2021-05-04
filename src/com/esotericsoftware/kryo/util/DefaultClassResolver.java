@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -32,12 +32,12 @@ import com.esotericsoftware.kryo.io.Output;
 /** Resolves classes by ID or by fully qualified class name.
  * @author Nathan Sweet */
 public class DefaultClassResolver implements ClassResolver {
-	static public final byte NAME = -1;
+	public static final byte NAME = -1;
 
 	protected Kryo kryo;
 
-	protected final IntMap<Registration> idToRegistration = new IntMap();
-	protected final ObjectMap<Class, Registration> classToRegistration = new ObjectMap();
+	protected final IntMap<Registration> idToRegistration = new IntMap<>();
+	protected final CuckooObjectMap<Class, Registration> classToRegistration = new CuckooObjectMap<>();
 
 	protected IdentityObjectIntMap<Class> classToNameId;
 	protected IntMap<Class> nameIdToClass;
@@ -132,7 +132,7 @@ public class DefaultClassResolver implements ClassResolver {
 		// Only write the class name the first time encountered in object graph.
 		if (TRACE) trace("kryo", "Write class name: " + className(type) + pos(output.position()));
 		int nameId = nextNameId++;
-		if (classToNameId == null) classToNameId = new IdentityObjectIntMap();
+		if (classToNameId == null) classToNameId = new IdentityObjectIntMap<>();
 		classToNameId.put(type, nameId);
 		output.writeVarInt(nameId, true);
 		if (registration.isTypeNameAscii())
@@ -165,7 +165,7 @@ public class DefaultClassResolver implements ClassResolver {
 
 	protected Registration readName (Input input) {
 		int nameId = input.readVarInt(true);
-		if (nameIdToClass == null) nameIdToClass = new IntMap();
+		if (nameIdToClass == null) nameIdToClass = new IntMap<>();
 		Class type = nameIdToClass.get(nameId);
 		if (type == null) {
 			// Only read the class name the first time encountered in object graph.
@@ -182,7 +182,7 @@ public class DefaultClassResolver implements ClassResolver {
 						throw new KryoException("Unable to find class: " + className, ex);
 					}
 				}
-				if (nameToClass == null) nameToClass = new ObjectMap();
+				if (nameToClass == null) nameToClass = new ObjectMap<>();
 				nameToClass.put(className, type);
 			}
 			nameIdToClass.put(nameId, type);

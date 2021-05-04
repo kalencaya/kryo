@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -30,6 +30,7 @@ import com.esotericsoftware.kryo.io.InputChunked;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.io.OutputChunked;
 import com.esotericsoftware.kryo.util.ObjectMap;
+import com.esotericsoftware.kryo.util.Util;
 
 /** Serializes objects using direct field assignment, providing both forward and backward compatibility. This means fields can be
  * added or removed without invalidating previously serialized bytes. Renaming or changing the type of a field is not supported.
@@ -44,9 +45,9 @@ import com.esotericsoftware.kryo.util.ObjectMap;
  * {@link CompatibleFieldSerializerConfig#setExtendedFieldNames(boolean)} must be true.
  * @author Nathan Sweet */
 public class CompatibleFieldSerializer<T> extends FieldSerializer<T> {
-	static private final int binarySearchThreshold = 32;
+	private static final int binarySearchThreshold = 32;
 
-	private CompatibleFieldSerializerConfig config;
+	private final CompatibleFieldSerializerConfig config;
 
 	public CompatibleFieldSerializer (Kryo kryo, Class type) {
 		this(kryo, type, new CompatibleFieldSerializerConfig());
@@ -89,7 +90,7 @@ public class CompatibleFieldSerializer<T> extends FieldSerializer<T> {
 				try {
 					if (object != null) {
 						Object value = cachedField.field.get(object);
-						if (value != null) valueClass = cachedField.field.getType();
+						if (value != null) valueClass = value.getClass();
 					}
 				} catch (IllegalAccessException ex) {
 				}
@@ -100,13 +101,14 @@ public class CompatibleFieldSerializer<T> extends FieldSerializer<T> {
 				}
 				cachedField.setCanBeNull(false);
 				cachedField.setValueClass(valueClass);
+				cachedField.setReuseSerializer(false);
 			}
 
 			cachedField.write(fieldOutput, object);
 			if (chunked) outputChunked.endChunk();
 		}
 
-		if (pop > 0) popTypeVariables(pop);
+		popTypeVariables(pop);
 	}
 
 	public T read (Kryo kryo, Input input, Class<? extends T> type) {
@@ -160,7 +162,7 @@ public class CompatibleFieldSerializer<T> extends FieldSerializer<T> {
 				}
 
 				// Ensure the type in the data is compatible with the field type.
-				if (cachedField.valueClass != null && !cachedField.valueClass.isAssignableFrom(valueClass)) {
+				if (cachedField.valueClass != null && !Util.isAssignableTo(valueClass, cachedField.field.getType())) {
 					String message = "Read type is incompatible with the field type: " + className(valueClass) + " -> "
 						+ className(cachedField.valueClass) + " (" + getType().getName() + "#" + cachedField + ")";
 					if (!chunked) throw new KryoException(message);
@@ -171,6 +173,7 @@ public class CompatibleFieldSerializer<T> extends FieldSerializer<T> {
 
 				cachedField.setCanBeNull(false);
 				cachedField.setValueClass(valueClass);
+				cachedField.setReuseSerializer(false);
 			} else if (cachedField == null) {
 				if (!chunked) throw new KryoException("Unknown field. (" + getType().getName() + ")");
 				if (TRACE) trace("kryo", "Skip unknown field.");
@@ -183,7 +186,7 @@ public class CompatibleFieldSerializer<T> extends FieldSerializer<T> {
 			if (chunked) inputChunked.nextChunk();
 		}
 
-		if (pop > 0) popTypeVariables(pop);
+		popTypeVariables(pop);
 		return object;
 	}
 
@@ -213,7 +216,7 @@ public class CompatibleFieldSerializer<T> extends FieldSerializer<T> {
 			}
 		} else {
 			int low, mid, high, compare;
-			int lastFieldIndex = allFields.length;
+			int lastFieldIndex = allFields.length - 1;
 			outer:
 			for (int i = 0; i < length; i++) {
 				String schemaName = names[i];
@@ -244,7 +247,7 @@ public class CompatibleFieldSerializer<T> extends FieldSerializer<T> {
 	}
 
 	/** Configuration for CompatibleFieldSerializer instances. */
-	static public class CompatibleFieldSerializerConfig extends FieldSerializerConfig {
+	public static class CompatibleFieldSerializerConfig extends FieldSerializerConfig {
 		boolean readUnknownFieldData = true, chunked;
 		int chunkSize = 1024;
 

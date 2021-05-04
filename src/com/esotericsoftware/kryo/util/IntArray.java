@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -350,7 +350,7 @@ public class IntArray {
 		int[] items1 = this.items;
 		int[] items2 = array.items;
 		for (int i = 0; i < n; i++)
-			if (items[i] != array.items[i]) return false;
+			if (items1[i] != items2[i]) return false;
 		return true;
 	}
 
@@ -381,7 +381,7 @@ public class IntArray {
 	}
 
 	/** @see #IntArray(int[]) */
-	static public IntArray with (int... array) {
+	public static IntArray with (int... array) {
 		return new IntArray(array);
 	}
 }

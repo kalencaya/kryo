@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -56,6 +56,7 @@ import com.esotericsoftware.kryo.serializers.DefaultSerializers.CollectionsEmpty
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.CollectionsSingletonListSerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.CollectionsSingletonMapSerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.CollectionsSingletonSetSerializer;
+import com.esotericsoftware.kryo.serializers.DefaultSerializers.ConcurrentSkipListMapSerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.CurrencySerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.DateSerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.DoubleSerializer;
@@ -77,10 +78,13 @@ import com.esotericsoftware.kryo.serializers.DefaultSerializers.TreeSetSerialize
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.URLSerializer;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.VoidSerializer;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
+import com.esotericsoftware.kryo.serializers.ImmutableCollectionsSerializers;
 import com.esotericsoftware.kryo.serializers.MapSerializer;
 import com.esotericsoftware.kryo.serializers.OptionalSerializers;
+import com.esotericsoftware.kryo.serializers.RecordSerializer;
 import com.esotericsoftware.kryo.serializers.TimeSerializers;
 import com.esotericsoftware.kryo.util.DefaultClassResolver;
+import com.esotericsoftware.kryo.util.DefaultGenerics;
 import com.esotericsoftware.kryo.util.DefaultInstantiatorStrategy;
 import com.esotericsoftware.kryo.util.Generics;
 import com.esotericsoftware.kryo.util.Generics.GenericType;
@@ -88,8 +92,8 @@ import com.esotericsoftware.kryo.util.Generics.GenericsHierarchy;
 import com.esotericsoftware.kryo.util.IdentityMap;
 import com.esotericsoftware.kryo.util.IntArray;
 import com.esotericsoftware.kryo.util.MapReferenceResolver;
+import com.esotericsoftware.kryo.util.NoGenerics;
 import com.esotericsoftware.kryo.util.ObjectMap;
-import com.esotericsoftware.kryo.util.Pool.Poolable;
 import com.esotericsoftware.kryo.util.Util;
 
 import java.lang.reflect.InvocationHandler;
@@ -115,6 +119,7 @@ import java.util.PriorityQueue;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.objenesis.instantiator.ObjectInstantiator;
 import org.objenesis.strategy.InstantiatorStrategy;
@@ -123,15 +128,16 @@ import org.objenesis.strategy.StdInstantiatorStrategy;
 
 /** Maps classes to serializers so object graphs can be serialized automatically.
  * @author Nathan Sweet */
-public class Kryo implements Poolable {
-	static public final byte NULL = 0;
-	static public final byte NOT_NULL = 1;
+public class Kryo {
+	public static final byte NULL = 0;
+	public static final byte NOT_NULL = 1;
 
-	static private final int REF = -1;
-	static private final int NO_REF = -2;
+	private static final int REF = -1;
+	private static final int NO_REF = -2;
+	private static final int DEFAULT_SERIALIZER_SIZE = 68;
 
 	private SerializerFactory defaultSerializer = new FieldSerializerFactory();
-	private final ArrayList<DefaultSerializerEntry> defaultSerializers = new ArrayList(53);
+	private final ArrayList<DefaultSerializerEntry> defaultSerializers = new ArrayList(DEFAULT_SERIALIZER_SIZE);
 	private final int lowPriorityDefaultSerializerCount;
 
 	private final ClassResolver classResolver;
@@ -155,7 +161,7 @@ public class Kryo implements Poolable {
 	private boolean copyShallow;
 	private IdentityMap originalToCopy;
 	private Object needsCopyReference;
-	private final Generics generics = new Generics(this);
+	private Generics generics = new DefaultGenerics(this);
 
 	/** Creates a new Kryo with a {@link DefaultClassResolver} and references disabled. */
 	public Kryo () {
@@ -191,7 +197,6 @@ public class Kryo implements Poolable {
 		addDefaultSerializer(boolean[].class, BooleanArraySerializer.class);
 		addDefaultSerializer(String[].class, StringArraySerializer.class);
 		addDefaultSerializer(Object[].class, ObjectArraySerializer.class);
-		addDefaultSerializer(KryoSerializable.class, KryoSerializableSerializer.class);
 		addDefaultSerializer(BigInteger.class, BigIntegerSerializer.class);
 		addDefaultSerializer(BigDecimal.class, BigDecimalSerializer.class);
 		addDefaultSerializer(Class.class, ClassSerializer.class);
@@ -209,6 +214,7 @@ public class Kryo implements Poolable {
 		addDefaultSerializer(Collections.singleton(null).getClass(), CollectionsSingletonSetSerializer.class);
 		addDefaultSerializer(TreeSet.class, TreeSetSerializer.class);
 		addDefaultSerializer(Collection.class, CollectionSerializer.class);
+		addDefaultSerializer(ConcurrentSkipListMap.class, ConcurrentSkipListMapSerializer.class);
 		addDefaultSerializer(TreeMap.class, TreeMapSerializer.class);
 		addDefaultSerializer(Map.class, MapSerializer.class);
 		addDefaultSerializer(TimeZone.class, TimeZoneSerializer.class);
@@ -220,8 +226,14 @@ public class Kryo implements Poolable {
 		addDefaultSerializer(void.class, new VoidSerializer());
 		addDefaultSerializer(PriorityQueue.class, new PriorityQueueSerializer());
 		addDefaultSerializer(BitSet.class, new BitSetSerializer());
+		addDefaultSerializer(KryoSerializable.class, KryoSerializableSerializer.class);
 		OptionalSerializers.addDefaultSerializers(this);
 		TimeSerializers.addDefaultSerializers(this);
+		ImmutableCollectionsSerializers.addDefaultSerializers(this);
+		// Add RecordSerializer if JDK 14+ available
+		if (isClassAvailable("java.lang.Record")) {
+			addDefaultSerializer("java.lang.Record", RecordSerializer.class);
+		}
 		lowPriorityDefaultSerializerCount = defaultSerializers.size();
 
 		// Primitives and string. Primitive wrappers automatically use the same registration as primitives.
@@ -270,6 +282,17 @@ public class Kryo implements Poolable {
 		if (type == null) throw new IllegalArgumentException("type cannot be null.");
 		if (serializerFactory == null) throw new IllegalArgumentException("serializerFactory cannot be null.");
 		insertDefaultSerializer(type, serializerFactory);
+	}
+
+	/** Instances with the specified class name will use the specified serializer when {@link #register(Class)} or
+	 * {@link #register(Class, int)} are called.
+	 * @see #setDefaultSerializer(Class) */
+	private void addDefaultSerializer(String className, Class<? extends Serializer> serializer) {
+		try {
+			addDefaultSerializer(Class.forName(className), serializer);
+		} catch (ClassNotFoundException e) {
+			throw new KryoException("default serializer cannot be added: " + className);
+		}
 	}
 
 	/** Instances of the specified class will use the specified serializer when {@link #register(Class)} or
@@ -342,11 +365,62 @@ public class Kryo implements Poolable {
 	 * <td>TimeZone</td>
 	 * </tr>
 	 * <tr>
+	 * <td>BitSet</td>
+	 * <td>Locale</td>
+	 * <td>Arrays.asList</td>
 	 * <td>TreeMap</td>
+	 * <td>URL</td>
+	 * </tr>
+	 * <tr>
 	 * <td>EnumSet</td>
+	 * <td>Charset</td>
+	 * <td>ConcurrentSkipListMap</td>
+	 * <td>TreeSet</td>
+	 * <td>PriorityQueue</td>
 	 * </tr>
 	 * </table>
+	 * </p>
+	 * The following classes have serializers set on JDK8 and above:
 	 * <p>
+	 * <table>
+	 * <tr>
+	 * <td>Optional</td>
+	 * <td>OptionalInt</td>
+	 * <td>OptionalLong</td>
+	 * <td>OptionalDouble</td>
+	 * </tr>
+	 * <tr>
+	 * <td>Duration</td>
+	 * <td>Instant</td>
+	 * <td>LocalDate</td>
+	 * <td>LocalTime</td>
+	 * <td>LocalDateTime</td>
+	 * </tr>
+	 * <tr>
+	 * <td>ZoneOffset</td>
+	 * <td>ZoneId</td>
+	 * <td>OffsetTime</td>
+	 * <td>OffsetDateTime</td>
+	 * <td>ZonedDateTime</td>
+	 * </tr>
+	 * <tr>
+	 * <td>Year</td>
+	 * <td>YearMonth</td>
+	 * <td>MonthDay</td>
+	 * <td>Period</td>
+	 * </tr>
+	 * </table>
+	 * </p>
+	 * The following classes have serializers set on JDK9 and above:
+	 * <p>
+	 * <table>
+	 * <tr>
+	 * <td>List.of</td>
+	 * <td>Set.of</td>
+	 * <td>Map.of</td>
+	 * </tr>
+	 * </table>
+	 * </p>
 	 * Note that the order default serializers are added is important for a class that may match multiple types. The above default
 	 * serializers always have a lower priority than subsequent default serializers that are added. */
 	public void addDefaultSerializer (Class type, Class<? extends Serializer> serializerClass) {
@@ -489,7 +563,14 @@ public class Kryo implements Poolable {
 				registration = getRegistration(InvocationHandler.class);
 			} else if (!type.isEnum() && Enum.class.isAssignableFrom(type) && type != Enum.class) {
 				// This handles an enum value that is an inner class, eg: enum A {b{}}
-				registration = getRegistration(type.getEnclosingClass());
+				while (true) {
+					type = type.getSuperclass();
+					if (type == null) break;
+					if (type.isEnum()) {
+						registration = classResolver.getRegistration(type);
+						break;
+					}
+				}
 			} else if (EnumSet.class.isAssignableFrom(type))
 				registration = classResolver.getRegistration(EnumSet.class);
 			else if (isClosure(type)) //
@@ -505,7 +586,7 @@ public class Kryo implements Poolable {
 
 	protected String unregisteredClassMessage (Class type) {
 		return "Class is not registered: " + className(type) + "\nNote: To register this class use: kryo.register("
-			+ className(type) + ".class);";
+			+ canonicalName(type) + ".class);";
 	}
 
 	/** @see ClassResolver#getRegistration(int) */
@@ -1195,6 +1276,18 @@ public class Kryo implements Poolable {
 	 * {@link FieldSerializer} for an example. */
 	public Generics getGenerics () {
 		return generics;
+	}
+
+	/** If true (the default), Kryo attempts to use generic type information to optimize the serialized size. If an object's
+	 * generic type can be inferred, serializers do not need to write the object's class.
+	 * <p>
+	 * Disabling generics optimization can increase performance at the cost of a larger serialized size.
+	 * <p>
+	 * Note that this setting affects the (de)serialization stream, i.e. the serializer and the deserializer need to use the same
+	 * setting in order to be compatible.
+	 * @param optimizedGenerics whether to optimize generics (default is true) */
+	public void setOptimizedGenerics (boolean optimizedGenerics) {
+		generics = optimizedGenerics ? new DefaultGenerics(this) : NoGenerics.INSTANCE;
 	}
 
 	static final class DefaultSerializerEntry {

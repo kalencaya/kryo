@@ -8,6 +8,8 @@ Kryo is a fast and efficient binary object graph serialization framework for Jav
 
 Kryo can also perform automatic deep and shallow copying/cloning. This is direct copying from object to object, not object to bytes to object.
 
+This documentation is for Kryo version 5.x. See [the Wiki](https://github.com/EsotericSoftware/kryo/wiki/Kryo-v4) for version 4.x.
+
 ## Contact / Mailing list
 
 Please use the [Kryo mailing list](https://groups.google.com/forum/#!forum/kryo-users) for questions, discussions, and support. Please limit use of the Kryo issue tracker to bugs and enhancements, not questions, discussions, or support.
@@ -18,6 +20,8 @@ Please use the [Kryo mailing list](https://groups.google.com/forum/#!forum/kryo-
 - [Installation](#installation)
    * [With Maven](#with-maven)
    * [Without Maven](#without-maven)
+   * [On Android](#on-android)
+   * [Building from source](#building-from-source)
 - [Quickstart](#quickstart)
 - [IO](#io)
    * [Output](#output)
@@ -84,25 +88,37 @@ Please use the [Kryo mailing list](https://groups.google.com/forum/#!forum/kryo-
 
 ## Recent releases
 
-[5.0.0-RC4](https://github.com/EsotericSoftware/kryo/releases/tag/kryo-parent-5.0.0-RC4) fourth release candidate with improvements over previous RCs based on feedback. See also [Migration to v5](https://github.com/EsotericSoftware/kryo/wiki/Migration-to-v5) for migration from kryo 4.x.
-
-[5.0.0-RC1](https://github.com/EsotericSoftware/kryo/releases/tag/kryo-parent-5.0.0-RC1) fixes many issues and makes many long awaited improvements.
-
-[4.0.2](https://github.com/EsotericSoftware/kryo/releases/tag/kryo-parent-4.0.2) brings several incremental fixes and improvements.
+* [5.1.1](https://github.com/EsotericSoftware/kryo/releases/tag/kryo-parent-5.1.1) - brings bug fixes for `CompatibleFieldSerializer` and removes dependency from versioned artifact
+* [5.1.0](https://github.com/EsotericSoftware/kryo/releases/tag/kryo-parent-5.1.0) - brings support for `java.util.Record` and improved support for older Android versions
+* [5.0.0](https://github.com/EsotericSoftware/kryo/releases/tag/kryo-parent-5.0.0) - the final Kryo 5 release fixing many issues and making many long awaited improvements over Kryo 4. Note: For libraries (not applications) using Kryo, there's now a completely self-contained, versioned artifact (for details see [installation](#installation)). For migration from Kryo 4.x see also [Migration to v5](https://github.com/EsotericSoftware/kryo/wiki/Migration-to-v5).
 
 ## Installation
+
+Kryo publishes two kinds of artifacts/jars:
+* the default jar (with the usual library dependencies) which is meant for direct usage in applications (not libraries)
+* a dependency-free, "versioned" jar which should be used by other libraries. Different libraries shall be able to use different major versions of Kryo.
 
 Kryo JARs are available on the [releases page](https://github.com/EsotericSoftware/kryo/releases) and at [Maven Central](https://search.maven.org/#search|gav|1|g%3Acom.esotericsoftware%20a%3Akryo). The latest snapshots of Kryo, including snapshot builds of master, are in the [Sonatype Repository](https://oss.sonatype.org/content/repositories/snapshots/com/esotericsoftware/kryo/).
 
 ### With Maven
 
-To use the latest Kryo release, use this dependency entry in your `pom.xml`:
+To use the latest Kryo release in your application, use this dependency entry in your `pom.xml`:
 
 ```xml
 <dependency>
    <groupId>com.esotericsoftware</groupId>
    <artifactId>kryo</artifactId>
-   <version>5.0.0-RC4</version>
+   <version>5.1.1</version>
+</dependency>
+```
+
+To use the latest Kryo release in a library you want to publish, use this dependency entry in your `pom.xml`:
+
+```xml
+<dependency>
+   <groupId>com.esotericsoftware.kryo</groupId>
+   <artifactId>kryo5</artifactId>
+   <version>5.1.1</version>
 </dependency>
 ```
 
@@ -115,16 +131,42 @@ To use the latest Kryo snapshot, use:
    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
 </repository>
 
+<!-- for usage in an application: -->
 <dependency>
    <groupId>com.esotericsoftware</groupId>
    <artifactId>kryo</artifactId>
-   <version>5.0.0-RC5-SNAPSHOT</version>
+   <version>5.1.2-SNAPSHOT</version>
+</dependency>
+<!-- for usage in a library that should be published: -->
+<dependency>
+   <groupId>com.esotericsoftware.kryo</groupId>
+   <artifactId>kryo5</artifactId>
+   <version>5.1.2-SNAPSHOT</version>
 </dependency>
 ```
 
 ### Without Maven
 
 Not everyone is a Maven fan. Using Kryo without Maven requires placing the [Kryo JAR](#installation) on your classpath along with the dependency JARs found in [lib](https://github.com/EsotericSoftware/kryo/tree/master/lib).
+
+### On Android
+
+Kryo 5 **before 5.1.0** ships with Objenesis 3.1 which [currently supports](https://github.com/easymock/objenesis/issues/79) Android API >= 26. If you want to use these versions of Kryo with older Android APIs, you need to explicitely depend on Objensis 3.2.
+
+```
+implementation ('com.esotericsoftware:kryo:5.0.4') {
+  exclude group: "org.objenesis"
+}
+implementation 'org.objenesis:objenesis:3.2'
+```
+
+### Building from source
+
+Building Kryo from source requires JDK11+ and Maven. To build all artifacts, run:
+
+```
+mvn clean && mvn install
+```
 
 ## Quickstart
 
@@ -225,16 +267,17 @@ It can be useful to write the length of some data, then the data. When the lengt
 
 Chunked encoding solves this problem by using a small buffer. When the buffer is full, its length is written, then the data. This is one chunk of data. The buffer is cleared and this continues until there is no more data to write. A chunk with a length of zero denotes the end of the chunks.
 
-Kryo provides classes to maked chunked encoding. OutputChunked is used to write chunked data. It extends Output, so has all the convenient methods to write data. When the OutputChunked buffer is full, it flushes the chunk to another OutputStream. The `endChunks` method is used to mark the end of a set of chunks.
+Kryo provides classes to maked chunked encoding. OutputChunked is used to write chunked data. It extends Output, so has all the convenient methods to write data. When the OutputChunked buffer is full, it flushes the chunk to another OutputStream. The `endChunk` method is used to mark the end of a set of chunks.
 
 ```java
 OutputStream outputStream = new FileOutputStream("file.bin");
 OutputChunked output = new OutputChunked(outputStream, 1024);
 // Write data to output...
-output.endChunks();
+output.endChunk();
 // Write more data to output...
-output.endChunks();
+output.endChunk();
 // Write even more data to output...
+output.endChunk();
 output.close();
 ```
 
@@ -706,6 +749,8 @@ By default, serializers will never receive a null, instead Kryo will write a byt
 ### Generics
 
 Kryo `getGenerics` provides generic type information so serializers can be more efficient. This is most commonly used to avoid writing the class when the type parameter class is final.
+
+Generic type inference is enabled by default and can be disabled with Kryo `setOptimizedGenerics(false)`. Disabling generics optimization can increase performance at the cost of a larger serialized size.
 
 If the class has a single type parameter, `nextGenericClass` returns the type parameter class, or null if none. After reading or writing any nested objects, `popGenericType` must be called. See CollectionSerializer for an example.
 
@@ -1215,7 +1260,8 @@ If `true` is passed as the second argument to the Pool constructor, the Pool sto
 
 The third Pool parameter is the maximum capacity. If an object is freed and the pool already contains the maximum number of free objects, the specified object is reset but not added to the pool. The maximum capacity may be omitted for no limit.
 
-If an object implements Pool.Poolable then Poolable `reset` is called when the object is freed. This gives the object a chance to reset its state for reuse in the future. Alternatively, Pool `reset` can be overridden to reset objects. Input and Output implement Poolable to set their `position` and `total` to 0. Kryo implements Poolable to reset its object graph state.
+If an object implements Pool.Poolable then Poolable `reset` is called when the object is freed. This gives the object a chance to reset its state for reuse in the future. Alternatively, Pool `reset` can be overridden to reset objects. Input and Output implement Poolable to set their `position` and `total` to 0.
+Kryo does not implement Poolable because its object graph state is typically reset automatically after each serialization (see [Reset](#reset)). If you disable automatic reset via `setAutoReset(false)`, make sure that you call `Kryo.reset()` before returning the instance to the pool.
 
 Pool `getFree` returns the number of objects available to be obtained. If using soft references, this number may include objects that have been garbage collected. `clean` may be used first to remove empty soft references.
 
@@ -1252,7 +1298,7 @@ There are a number of projects using Kryo. A few are listed below. Please submit
 - [Cascalog](https://github.com/nathanmarz/cascalog) (Clojure/Java data processing and querying [details](https://groups.google.com/d/msg/cascalog-user/qgwO2vbkRa0/UeClnLL5OsgJ))
 - [memcached-session-manager](https://code.google.com/p/memcached-session-manager/) (Tomcat high-availability sessions)
 - [Mobility-RPC](http://code.google.com/p/mobility-rpc/) (RPC enabling distributed applications)
-- [akka-kryo-serialization](https://github.com/romix/akka-kryo-serialization) (Kryo serializers for Akka)
+- [akka-kryo-serialization](https://github.com/altoo-ag/akka-kryo-serialization) (Kryo serializers for Akka)
 - [Groupon](https://code.google.com/p/kryo/issues/detail?id=67)
 - [Jive](http://www.jivesoftware.com/jivespace/blogs/jivespace/2010/07/29/the-jive-sbs-cache-redesign-part-3)
 - [DestroyAllHumans](https://code.google.com/p/destroyallhumans/) (controls a [robot](http://www.youtube.com/watch?v=ZeZ3R38d3Cg)!)
@@ -1262,7 +1308,7 @@ There are a number of projects using Kryo. A few are listed below. Please submit
 ### Scala
 
 - [Twitter's Chill](https://github.com/twitter/chill) (Kryo serializers for Scala)
-- [akka-kryo-serialization](https://github.com/romix/akka-kryo-serialization) (Kryo serializers for Scala and Akka)
+- [akka-kryo-serialization](https://github.com/altoo-ag/akka-kryo-serialization) (Kryo serializers for Scala and Akka)
 - [Twitter's Scalding](https://github.com/twitter/scalding) (Scala API for Cascading)
 - [Kryo Serializers](https://github.com/magro/kryo-serializers) (Additional serializers for Java)
 - [Kryo Macros](https://github.com/evolution-gaming/kryo-macros) (Scala macros for compile-time generation of Kryo serializers)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -19,17 +19,17 @@
 
 package com.esotericsoftware.kryo.serializers;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.esotericsoftware.kryo.KryoTestCase;
 import com.esotericsoftware.kryo.SerializerFactory.FieldSerializerFactory;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /** Created by phamrak on 8.6.2016. */
-public class FieldSerializerInheritanceTest extends KryoTestCase {
+class FieldSerializerInheritanceTest extends KryoTestCase {
 	@Test
-	public void testDefaultStrategyForDefaultClass () {
+	void testDefaultStrategyForDefaultClass () {
 		TestDefault testDefault = new TestDefault();
 		testDefault.a = "someDefaultValue";
 		kryo.setDefaultSerializer(FieldSerializer.class);
@@ -44,7 +44,7 @@ public class FieldSerializerInheritanceTest extends KryoTestCase {
 	}
 
 	@Test
-	public void testDefaultStrategyForExtendedClass () {
+	void testDefaultStrategyForExtendedClass () {
 		TestExtended testExtended = new TestExtended();
 		((TestDefault)testExtended).a = "someDefaultValue";
 		testExtended.a = "someExtendedValue";
@@ -65,7 +65,7 @@ public class FieldSerializerInheritanceTest extends KryoTestCase {
 	}
 
 	@Test
-	public void testExtendedStrategyForExtendedClass () {
+	void testExtendedStrategyForExtendedClass () {
 		TestExtended testExtended = new TestExtended();
 		((TestDefault)testExtended).a = "someDefaultValue";
 		testExtended.a = "someExtendedValue";
@@ -96,7 +96,7 @@ public class FieldSerializerInheritanceTest extends KryoTestCase {
 		}
 	}
 
-	static public class TestDefault {
+	public static class TestDefault {
 		String a;
 
 		public String getA () {
@@ -122,7 +122,7 @@ public class FieldSerializerInheritanceTest extends KryoTestCase {
 		}
 	}
 
-	static public class TestExtended extends TestDefault {
+	public static class TestExtended extends TestDefault {
 		String a;
 
 		public String getA () {

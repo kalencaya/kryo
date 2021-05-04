@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -19,7 +19,7 @@
 
 package com.esotericsoftware.kryo.serializers;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.esotericsoftware.kryo.KryoTestCase;
 import com.esotericsoftware.kryo.io.Input;
@@ -28,12 +28,12 @@ import com.esotericsoftware.kryo.io.Output;
 import java.lang.invoke.SerializedLambda;
 import java.util.concurrent.Callable;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /** Test for java 8 closures. */
-public class ClosureSerializerTest extends KryoTestCase {
-	@Before
+class ClosureSerializerTest extends KryoTestCase {
+	@BeforeEach
 	public void setUp () throws Exception {
 		super.setUp();
 		// kryo.setInstantiatorStrategy(new DefaultInstantiatorStrategy(new StdInstantiatorStrategy()));
@@ -45,7 +45,7 @@ public class ClosureSerializerTest extends KryoTestCase {
 	}
 
 	@Test
-	public void testSerializableClosure () {
+	void testSerializableClosure () {
 		Callable<Integer> closure1 = (Callable<Integer> & java.io.Serializable)( () -> 72363);
 
 		// The length cannot be checked reliable, as it can vary based on the JVM.

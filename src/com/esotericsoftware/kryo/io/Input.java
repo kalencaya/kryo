@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -20,7 +20,6 @@
 package com.esotericsoftware.kryo.io;
 
 import com.esotericsoftware.kryo.KryoException;
-import com.esotericsoftware.kryo.util.Pool;
 import com.esotericsoftware.kryo.util.Pool.Poolable;
 import com.esotericsoftware.kryo.util.Util;
 
@@ -30,7 +29,7 @@ import java.io.InputStream;
 /** An InputStream that reads data from a byte[] and optionally fills the byte[] from another InputStream as needed. Utility
  * methods are provided for efficiently reading primitive types and strings.
  * @author Nathan Sweet */
-public class Input extends InputStream implements AutoCloseable, Poolable {
+public class Input extends InputStream implements Poolable {
 	protected byte[] buffer;
 	protected int position;
 	protected int capacity;
@@ -157,6 +156,7 @@ public class Input extends InputStream implements AutoCloseable, Poolable {
 	}
 
 	/** Sets the position and total to zero. */
+	@SuppressWarnings("sync-override")
 	public void reset () {
 		position = 0;
 		total = 0;
@@ -704,7 +704,7 @@ public class Input extends InputStream implements AutoCloseable, Poolable {
 
 	/** Reads a 1-5 byte float with reduced precision. */
 	public float readVarFloat (float precision, boolean optimizePositive) throws KryoException {
-		return readVarInt(optimizePositive) / (float)precision;
+		return readVarInt(optimizePositive) / precision;
 	}
 
 	// double:
@@ -727,7 +727,7 @@ public class Input extends InputStream implements AutoCloseable, Poolable {
 
 	/** Reads a 1-9 byte double with reduced precision. */
 	public double readVarDouble (double precision, boolean optimizePositive) throws KryoException {
-		return readVarLong(optimizePositive) / (double)precision;
+		return readVarLong(optimizePositive) / precision;
 	}
 
 	// short:

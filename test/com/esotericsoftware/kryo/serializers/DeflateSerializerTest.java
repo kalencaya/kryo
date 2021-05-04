@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2018, Nathan Sweet
+/* Copyright (c) 2008-2020, Nathan Sweet
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -22,18 +22,18 @@ package com.esotericsoftware.kryo.serializers;
 import com.esotericsoftware.kryo.KryoTestCase;
 import com.esotericsoftware.kryo.serializers.DefaultSerializers.StringSerializer;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /** @author Nathan Sweet */
-public class DeflateSerializerTest extends KryoTestCase {
+class DeflateSerializerTest extends KryoTestCase {
 	@Test
-	public void testString () {
+	void testString () {
 		kryo.register(String.class, new DeflateSerializer(new StringSerializer()));
 		roundTrip(14, "abcdefabcdefabcdefabcdefabcdefabcdefabcdef");
 	}
 
 	@Test
-	public void testGraph () {
+	void testGraph () {
 		kryo.register(Message.class);
 		kryo.register(MessageType.class);
 		kryo.register(ServerPhysicsUpdate.class, new DeflateSerializer(kryo.getDefaultSerializer(ServerPhysicsUpdate.class)));
@@ -47,7 +47,7 @@ public class DeflateSerializerTest extends KryoTestCase {
 		roundTrip(8, message);
 	}
 
-	static public class ServerPhysicsUpdate {
+	public static class ServerPhysicsUpdate {
 		public int value;
 
 		public ServerPhysicsUpdate () {
@@ -70,11 +70,11 @@ public class DeflateSerializerTest extends KryoTestCase {
 		}
 	}
 
-	static public enum MessageType {
+	public static enum MessageType {
 		SERVER_UPDATE
 	}
 
-	static public class Message {
+	public static class Message {
 		public MessageType type;
 		public Object data;
 
